@@ -1,0 +1,124 @@
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local player = Players.LocalPlayer
+local character = player.Character or player.CharacterAdded:Wait()
+local hrp = character:WaitForChild("HumanoidRootPart")
+
+local gui = Instance.new("ScreenGui", player:WaitForChild("PlayerGui"))
+gui.Name = "FlyGUI"
+gui.ResetOnSpawn = false
+
+local frame = Instance.new("Frame")
+frame.Size = UDim2.new(0, 320, 0, 220)
+frame.Position = UDim2.new(0, 20, 0, 200)
+frame.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+frame.Visible = true
+frame.Parent = gui
+
+local function makeButton(pos, size, text)
+	local b = Instance.new("TextButton")
+	b.Position = pos
+	b.Size = size
+	b.Text = text
+	b.BackgroundColor3 = Color3.fromRGB(60, 60, 60)
+	b.TextColor3 = Color3.new(1, 1, 1)
+	b.TextScaled = true
+	b.Parent = frame
+	return b
+end
+
+local btnFly = makeButton(UDim2.new(0.05, 0, 0.05, 0), UDim2.new(0.25, 0, 0.15, 0), "飛行開始")
+local btnUp = makeButton(UDim2.new(0.35, 0, 0.05, 0), UDim2.new(0.25, 0, 0.15, 0), "上昇")
+local btnDown = makeButton(UDim2.new(0.65, 0, 0.05, 0), UDim2.new(0.25, 0, 0.15, 0), "下降")
+
+local btnLeft = makeButton(UDim2.new(0.05, 0, 0.25, 0), UDim2.new(0.25, 0, 0.15, 0), "←")
+local btnRight = makeButton(UDim2.new(0.65, 0, 0.25, 0), UDim2.new(0.25, 0, 0.15, 0), "→")
+local btnForward = makeButton(UDim2.new(0.35, 0, 0.17, 0), UDim2.new(0.25, 0, 0.12, 0), "↑")
+local btnBack = makeButton(UDim2.new(0.35, 0, 0.31, 0), UDim2.new(0.25, 0, 0.12, 0), "↓")
+
+local btnHide = makeButton(UDim2.new(0.35, 0, 0.8, 0), UDim2.new(0.3, 0, 0.15, 0), "最小化")
+
+local speedBox = Instance.new("TextBox")
+speedBox.Position = UDim2.new(0.05, 0, 0.5, 0)
+speedBox.Size = UDim2.new(0.9, 0, 0.15, 0)
+speedBox.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+speedBox.TextColor3 = Color3.new(1, 1, 1)
+speedBox.Text = "スピード: 50"
+speedBox.TextScaled = true
+speedBox.ClearTextOnFocus = false
+speedBox.Parent = frame
+
+local btnShow = Instance.new("TextButton")
+btnShow.Text = "GUI表示"
+btnShow.Size = UDim2.new(0, 100, 0, 40)
+btnShow.Position = UDim2.new(0, 10, 0, 10)
+btnShow.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+btnShow.TextColor3 = Color3.new(1, 1, 1)
+btnShow.Visible = false
+btnShow.Parent = gui
+
+local flying = false
+local speed = 50
+local dir = {up=false, down=false, forward=false, back=false, left=false, right=false}
+
+local function flyLoop()
+	RunService:BindToRenderStep("FlyMove", Enum.RenderPriority.Character.Value, function()
+		if flying and hrp then
+			local cam = workspace.CurrentCamera
+			local move = Vector3.zero
+			if dir.up then move += Vector3.new(0, 1, 0) end
+			if dir.down then move -= Vector3.new(0, 1, 0) end
+			if dir.forward then move += cam.CFrame.LookVector end
+			if dir.back then move -= cam.CFrame.LookVector end
+			if dir.left then move -= cam.CFrame.RightVector end
+			if dir.right then move += cam.CFrame.RightVector end
+			if move.Magnitude > 0 then
+				hrp.Velocity = move.Unit * speed
+			else
+				hrp.Velocity = Vector3.zero
+			end
+		end
+	end)
+end
+
+btnFly.MouseButton1Click:Connect(function()
+	flying = not flying
+	btnFly.Text = flying and "停止" or "飛行開始"
+	if flying then
+		flyLoop()
+	else
+		RunService:UnbindFromRenderStep("FlyMove")
+		hrp.Velocity = Vector3.zero
+	end
+end)
+
+local function setDir(btn, key)
+	btn.MouseButton1Down:Connect(function() dir[key] = true end)
+	btn.MouseButton1Up:Connect(function() dir[key] = false end)
+end
+
+setDir(btnUp, "up")
+setDir(btnDown, "down")
+setDir(btnForward, "forward")
+setDir(btnBack, "back")
+setDir(btnLeft, "left")
+setDir(btnRight, "right")
+
+speedBox.FocusLost:Connect(function()
+	local n = tonumber(speedBox.Text:match("%d+"))
+	if n then
+		speed = math.clamp(n, 1, 200)
+		speedBox.Text = "スピード: " .. speed
+	else
+		speedBox.Text = "スピード: " .. speed
+	end
+end)
+
+btnHide.MouseButton1Click:Connect(function()
+	frame.Visible = false
+	btnShow.Visible = true
+end)
+btnShow.MouseButton1Click:Connect(function()
+	frame.Visible = true
+	btnShow.Visible = false
+end)
